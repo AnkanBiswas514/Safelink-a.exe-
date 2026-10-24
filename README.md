@@ -49,6 +49,8 @@ Relay SOS Form: http://<relay-laptop-ip>:5001/
 
 Relay Dashboard: http://<relay-laptop-ip>:5001/dashboard
 
+TECH STACK: Python, SQLite
+
 📊 Priority Triage Engine
 The urgency engine evaluates each request and assigns points based on risk metrics:
 
