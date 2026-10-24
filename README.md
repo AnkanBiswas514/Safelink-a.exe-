@@ -1,91 +1,102 @@
-SafeLink: zero-install offline SOS and triage network
-Stranded victims connect to a rescue node's Wi-Fi network from any phone, tap I NEED HELP, and their request appears instantly on a rescuer dashboard, ranked by urgency score and triage level. No app installation or cellular/internet connectivity is required. Nodes save every request locally first (store-and-forward) and synchronize upstream to the command node whenever a connection exists.
+                                                      🛰️ SafeLink 
+Zero-Install Offline Emergency SOS & Priority Triage Network
 
-One Python file (safelink.py), one dependency (Flask).
+SafeLink is a disaster-resilient, offline emergency response network that enables stranded victims to request rescue using any smartphone without cellular network coverage, internet access, or pre-installed mobile apps.
 
-Bash
-pip install flask
-Quick Start (Local Demo in 5 Minutes)
-Run the network on any laptop and connect devices over local Wi-Fi (mobile hotspot or home router).
+Victims simply join an open Wi-Fi network hosted by a rescue node (such as a rescue boat, drone, patrol vehicle, or ground base) and tap I NEED HELP. Requests are saved locally, scored by an automated triage algorithm, and synchronized back to the Command Centre dashboard using a store-and-forward mesh mechanism.
 
-1. Command Node (Command Centre / Rescuers)
-Run the central server node:
+🌟 Key Features
+📱 Zero-Install Victim App: Served directly over local HTTP / captive portal. Works on iOS, Android, and web browsers with zero setup.
+
+🌐 Fully Offline Operation: Zero reliance on cloud servers, cellular towers, or internet connectivity.
+
+🚢 Store-and-Forward Mesh Network: Rescue boats and mobile units store emergency requests in local SQLite databases (safelink_<node_id>.db) and automatically sync them to the Command Centre when in radio range.
+
+🚨 Algorithmic Priority Triage: Transparent, rule-based urgency scoring ranks incoming cases into CRITICAL, HIGH, MEDIUM, and LOW tiers based on medical state, flood depth, vulnerable individuals, and waiting duration.
+
+🗺️ Interactive Rescuer Dashboard: Command center dashboard featuring real-time status management (Assign team, Rescued, False alarm), offline Leaflet map integration, and case timelines.
+
+🌍 Multilingual Support: Supports English, Hindi, Tamil, Telugu, and Malayalam.
+
+🏗️ Architecture Overview
+[ Victim Phone ] ──Wi-Fi / Captive Portal──> [ Relay Node / Boat (BOAT1) ]
+                                                      │
+                                           (Store & Forward Sync)
+                                                      │
+                                                      ▼
+[ Rescuer Dashboard ] <─── HTTP / REST ───> [ Command Node (CMD) ]
+🚀 Quick Start (Local Demo)
+Prerequisites
+Python 3.8+
+
+Flask (pip install flask)
+
+Step 1: Start the Command Centre Node
+Run the central command node on your primary laptop:
 
 Bash
 python safelink.py --role command --node-id CMD --port 5000
-Open Victim Page: http://localhost:5000/
+Rescuer Dashboard: http://localhost:5000/dashboard
 
-Open Rescuer Dashboard: http://localhost:5000/dashboard
+Victim SOS Form: http://localhost:5000/
 
-2. Relay Node (e.g. Rescue Boat / Patrol Post)
-Run a secondary node that receives local victim SOS calls and forwards them to command:
+Step 2: Start a Relay Node (e.g., Rescue Boat)
+Run a secondary node representing a mobile rescue unit:
 
 Bash
 python safelink.py --role relay --node-id BOAT1 --port 5001 --command-url http://<command-laptop-ip>:5000
-Open Relay Victim Page: http://<relay-laptop-ip>:5001/
+Relay SOS Form: http://<relay-laptop-ip>:5001/
 
-Open Relay Dashboard: http://<relay-laptop-ip>:5001/dashboard
+Relay Dashboard: http://<relay-laptop-ip>:5001/dashboard
 
-Key Workflow & Features
-Multilingual SOS Form for Victims (/):
+📊 Priority Triage Engine
+The urgency engine evaluates each request and assigns points based on risk metrics:
 
-One-Tap Instant Dispatch: Tapping I NEED HELP immediately creates a unique UUID-backed case record with location/node metadata.
+Category	Indicator	Points
+Emergency Type	Medical Emergency	+40
+Injured Person	+30
+Vulnerable Individuals	Infant / Young Child (< 5 yrs)	+25
+Elderly / Disabled	+15
+People Count	+2 per person (max +20)
+Water Level	Ankle / Knee / Waist / Chest / Roof	+3 to +42
+Location Risk	Ground Floor	+12
+First Floor	+6
+Essential Needs	Medicine / Drinking Water / Food	+2 to +8
+Wait Bonus	Duration awaiting rescue	+1 / 5 mins (max +20)
+Triage Levels:
+🔴 CRITICAL: Score 
+≥75
 
-Comprehensive Triage: Includes multi-language support (English, Hindi, Tamil, Telugu, Malayalam), multi-person/child/infant counters, water depth indicators, mobility status, medical emergencies, immediate danger flags, and landmark/spotting descriptions.
+🟠 HIGH: Score 
+45−74
 
-Offline Location Fallback: Uses device GPS if permitted. If GPS is unavailable, it automatically attributes the request location to the node's configured coordinates (--lat / --lng).
+🟡 MEDIUM: Score 
+20−44
 
-Rescuer Dashboard (/dashboard):
+🟢 LOW: Score 
+<20
 
-Real-time priority ranking into CRITICAL (75+), HIGH (45+), MEDIUM (20+), and LOW levels based on injury, water depth, age group, medical status, and waiting time.
-
-Workflow buttons to update status (Assign team, Rescued, False alarm, or Reopen request).
-
-Integrated offline mapping (Leaflet tile support with interactive SVG fallback locator).
-
-Store-and-Forward Sync:
-
-Every request is stored in SQLite (safelink_<node_id>.db).
-
-Out of Range / Dock Simulation: On a relay node dashboard, click Go out of range (simulate) to pause syncing and simulate going out of range. Requests queue locally on the relay node. Clicking Dock at base & sync flushes the queue back to the command node once reconnected.
-
-Captive Portal Setup (Hardware / Field Deployments)
-For standalone field nodes (such as Linux laptops or Raspberry Pis running an AP network):
+📡 Captive Portal Deployment (Field Mode)
+For hardware deployments on Linux devices or Raspberry Pis acting as access points:
 
 Bash
-sudo python3 safelink.py --role command --port 80 --captive --portal-ip 192.168.4.1 --lat <lat> --lng <lng>
-When --captive is enabled, built-in DNS handles domain lookup queries (e.g., Apple/Android connectivity checks) to automatically trigger the "Sign in to network" pop-up on connecting victim smartphones, directing them to the SOS form.
+sudo python3 safelink.py --role command --port 80 --captive --portal-ip 192.168.4.1 --lat 12.9716 --lng 77.5946
+When victims join the open network, the built-in DNS intercepts connectivity checks and launches the I NEED HELP interface automatically via operating system captive portal popups.
 
-Urgency Scoring Rules
-Medical Emergency: +40
-
-Injured Person: +30
-
-Infant / Young Child: +25
-
-Elderly / Disabled: +15
-
-People Count: +2 per person (up to 10 max)
-
-Water Level: Ankle (+3), Knee (+10), Waist (+20), Chest (+32), Roof/Trapped (+42)
-
-Floor Level: Ground floor (+12), 1st floor (+6)
-
-Needs: Medicine (+8), Water (+4), Food (+2)
-
-Waiting Time Bonus: Up to +20 points (+1 point per 5 minutes waiting time for unassigned cases)
-
-API Summary
-POST /api/sos — Submit or update an SOS case record.
-
-GET /api/sos — Fetch all active/closed cases, connected nodes, and synchronization status.
-
-GET /api/sos/<sid> — Fetch status and delivery/sync state for a single case.
-
-POST /api/sos/<sid>/status — Update case status (assigned, rescued, false_alarm).
-
-POST /api/sync — Inter-node synchronization endpoint (idempotent record merge).
-
-POST /api/sync-mode — Toggle sync pause (out_of_range vs docked).
-
-GET /api/offline-map-status — Check availability of local Leaflet JS and MBTiles/XYZ offline map data.
+🛠️ REST API Specification
+Endpoint	Method	Description
+/api/sos	POST	Submit or update an emergency SOS request
+/api/sos	GET	Retrieve all active and closed cases
+/api/sos/<sid>	GET	Get delivery status of a specific request
+/api/sos/<sid>/status	POST	Update case status (assigned, rescued, false_alarm)
+/api/sync	POST	Bidirectional node-to-node database sync
+/api/sync-mode	POST	Toggle offline queueing mode (out_of_range / docked)
+/api/offline-map-status	GET	Query local Leaflet asset and MBTiles status
+⚙️ Repository Structure
+.
+├── safelink.py                 # Core single-file node backend & frontend
+├── SafeLink_rescue_simulation_5_boats.html  # Interactive 5-boat Canvas simulation
+├── static/                     # Offline Leaflet JS assets and MBTiles
+└── README.md                   # Project documentation
+🤝 Contributing
+Contributions are welcome! Feel free to open an issue or submit a pull request for new features, localized translations, or enhanced UI components.
