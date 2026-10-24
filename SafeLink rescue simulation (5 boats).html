@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SafeLink rescue simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e6edf0;--panel:#f8fafb;--ink:#12303b;--mut:#587480;--line:#c3d3d9;--sea:#cfe3ea;--land:#e3dcc6;--flood:#7fb0c4;--accent:#e8590c;--ok:#1f8a5b;--warn:#b7791f;--blue:#1d4ed8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0d1d24;--panel:#142a33;--ink:#e3eef2;--mut:#93aeb9;--line:#2a4551;--sea:#10303c;--land:#2b3a30;--flood:#2f6f88;--accent:#ff8a4c;--ok:#4cc38a;--warn:#f0b955;--blue:#8fb0ff}}
+:root[data-theme=dark]{--bg:#0d1d24;--panel:#142a33;--ink:#e3eef2;--mut:#93aeb9;--line:#2a4551;--sea:#10303c;--land:#2b3a30;--flood:#2f6f88;--accent:#ff8a4c;--ok:#4cc38a;--warn:#f0b955;--blue:#8fb0ff}
+*{box-sizing:border-box}html,body{margin:0}
+body{font:15px/1.4 "Atkinson Hyperlegible",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 16px}
+h1{font-size:20px;margin:0;margin-right:auto}h2{font-size:15px;margin:0}
+.bar{display:flex;gap:8px;align-items:center}
+button,select,input[type=text],input[type=number]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer;font-weight:700}button:hover{border-color:var(--ink)}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
+button.go{background:var(--accent);border-color:var(--accent);color:#fff}
+#hint{margin:0 16px 10px;padding:10px 14px;border-left:5px solid var(--accent);background:var(--panel);border-radius:6px}
+.top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;padding:0 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+svg{width:100%;height:auto;display:block;border-radius:10px;touch-action:none;user-select:none}
+svg text{fill:var(--ink);font-size:13px}
+.phone{border:6px solid var(--ink);border-radius:26px;padding:12px;background:var(--panel)}
+.net{font-size:13px;color:var(--mut);margin:0 0 6px}.net.on{color:var(--ok);font-weight:700}
+.sub{margin:0 0 8px;font-weight:700}
+.banner{padding:9px 11px;border-radius:9px;margin:8px 0;font-weight:700;background:#e0e7ff;color:#1e3a8a}
+.banner.warn{background:#fef3c7;color:#78350f}.banner.good{background:#dcfce7;color:#14532d}.banner.off{background:#e5e7eb;color:#374151}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin:8px 0}.f label{display:flex;align-items:center;gap:6px}.f .w{grid-column:1/3}
+.f input[type=text],.f select,.f input[type=number]{width:100%}
+.sos{width:100%;padding:16px;font-size:20px;color:#fff;background:var(--accent);border:0;border-radius:14px}
+.boats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;padding:12px 16px 0}.boats ul{max-height:210px;overflow:auto}.cols{padding:12px 16px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.st{font-size:13px;color:var(--mut);margin:0 0 6px}.st b{color:var(--ink)}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;min-height:40px}
+li{border:1px solid var(--line);border-left-width:6px;border-radius:8px;padding:6px 8px;font-size:13px}
+li.CRITICAL{border-left-color:#c0221a}li.HIGH{border-left-color:var(--accent)}li.MEDIUM{border-left-color:var(--warn)}li.LOW{border-left-color:var(--ok)}li.done{opacity:.6}
+.chip{display:inline-block;padding:1px 7px;border-radius:99px;font-size:12px;font-weight:700;background:var(--line)}
+.chip.q{background:#fef3c7;color:#78350f}.chip.s{background:#dcfce7;color:#14532d}
+.acts{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}.acts button{padding:3px 8px;font-size:12px}
+.empty{color:var(--mut);font-size:13px;padding:8px}
+#log{margin:0 16px 16px;font-size:13px;color:var(--mut);display:grid;gap:2px}#log b{color:var(--ink)}
+@media(max-width:900px){.top,.cols{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>SafeLink rescue simulation</h1>
+<div class="bar"><label>Dispatch <select id="mode"><option value="manual">Manual</option><option value="nearest">Auto: first come, nearest boat</option><option value="smart" selected>Auto: most urgent first, nearest boat</option></select></label><label>Speed <select id="spd"><option>1</option><option selected>2</option><option>4</option></select></label><button id="auto" class="go">Run stress scenario</button><button id="reset">Reset</button></div></header>
+<p id="hint"></p>
+<div class="top">
+ <div class="card"><svg id="map" viewBox="0 0 760 440" role="img" aria-label="Map: command centre on land, five rescue boats, eight flooded households. Drag boats."></svg>
+  <p class="st">Drag a boat to move it. A boat only reaches the command centre inside the dashed green circle. A phone only joins EMERGENCY_SOS within the boat’s orange circle. Click a house to use its phone.</p></div>
+ <div class="card phone"><p class="net" id="net"></p><p class="sub" id="who"></p>
+  <button class="sos" id="send">I NEED HELP</button><div id="banner"></div>
+  <div class="f" id="form">
+   <label>People <input type="number" id="people" min="1" max="20"></label>
+   <label>Floor <select id="floor"><option value="0">Ground</option><option value="1">First</option><option value="2">Second+</option></select></label>
+   <label><input type="checkbox" id="medical">Medical emergency</label><label><input type="checkbox" id="injured">Injured</label>
+   <label><input type="checkbox" id="infants">Infant / child</label><label><input type="checkbox" id="elderly">Elderly / disabled</label>
+   <label class="w">Water level <select id="water"><option value="ankle">Ankle</option><option value="knee">Knee</option><option value="waist">Waist</option><option value="chest">Chest</option><option value="roof">On the roof</option></select></label>
+   <label class="w">Landmark <input type="text" id="landmark" maxlength="80"></label></div></div>
+</div>
+<div class="boats" id="boats"></div>
+<div class="cols"><section class="card"><div class="hd"><h2>Command centre (CMD database)</h2></div><p class="st" id="met"></p><p class="st" id="s_CMD"></p><ul id="l_CMD"></ul></section></div>
+<div id="log"></div>
+<script>
+const $=s=>document.querySelector(s),RANK={new:0,assigned:1,rescued:2,false_alarm:3},WATER={none:0,ankle:3,knee:10,waist:20,chest:32,roof:42};
+const HQ={x:80,y:220},R=250,W=85,CAP=3,IDS=["BOAT1","BOAT2","BOAT3","BOAT4","BOAT5"],DOCK={},FAR={},PATROL=[{x:475,y:120},{x:430,y:350},{x:620,y:335},{x:675,y:130},{x:500,y:215}];IDS.forEach((id,i)=>{DOCK[id]={x:175,y:60+i*80};FAR[id]={x:600,y:40+i*90}});
+const FIELDS=["status","assignee","updated","people","medical","injured","infants","elderly","water","floor","landmark"];
+const VDEF=[
+ {id:"V1",x:470,y:130,f:{people:4,floor:0,medical:1,injured:0,infants:1,elderly:0,water:"waist",landmark:"Lane behind the bus stand"}},
+ {id:"V2",x:575,y:290,f:{people:2,floor:0,medical:0,injured:1,infants:0,elderly:1,water:"chest",landmark:"House by the canal bridge"}},
+ {id:"V3",x:660,y:175,f:{people:6,floor:1,medical:0,injured:0,infants:1,elderly:1,water:"knee",landmark:"Temple compound"}},
+ {id:"V4",x:420,y:345,f:{people:3,floor:1,medical:0,injured:0,infants:0,elderly:0,water:"ankle",landmark:"Primary school, first floor"}},
+ {id:"V5",x:610,y:380,f:{people:5,floor:0,medical:0,injured:0,infants:1,elderly:0,water:"waist",landmark:"Row houses behind the post office"}},
+ {id:"V6",x:670,y:330,f:{people:1,floor:2,medical:1,injured:0,infants:0,elderly:0,water:"roof",landmark:"Tin-roof house near the petrol pump"}},
+ {id:"V7",x:690,y:80,f:{people:2,floor:1,medical:0,injured:0,infants:0,elderly:0,water:"ankle",landmark:"Top floor of the market tower"}},
+ {id:"V8",x:500,y:215,f:{people:8,floor:0,medical:0,injured:1,infants:1,elderly:1,water:"knee",landmark:"Community hall"}}];
+let S,speed=1,sel="V1",drag=null,pk=[],last=performance.now(),pacc=0;
+const now=()=>S.t*1000,dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function mk(id){return{id,db:new Map(),x:DOCK[id].x,y:DOCK[id].y,kx:DOCK[id].x,ky:DOCK[id].y,tx:null,ty:null,mode:"idle",cursor:0,acc:Math.random()*1000,done:new Set(),mission:null}}
+function fresh(){S={t:0,clock:0,dacc:0,auto:null,cmd:{id:"CMD",cmd:true,db:new Map()},boats:Object.fromEntries(IDS.map(i=>[i,mk(i)])),vics:VDEF.map(v=>({...v,f:{...v.f},rid:"SOS-"+v.id,sent:false,outbox:null,last:null,rescued:false,closed:false})),flags:{},log:[]};pk=[];loadForm()}
+function log(m){S.log.unshift(m);S.log.length=8}
+// urgency rules, ported from safelink.py
+function score(d){let p=0,w=[];const add=(n,t)=>{p+=n;w.push(t+" +"+n)};
+ if(d.medical)add(40,"Medical");if(d.injured)add(30,"Injured");if(d.infants)add(25,"Infant");if(d.elderly)add(15,"Elderly");
+ add(Math.min(d.people,10)*2,d.people+" people");if(WATER[d.water])add(WATER[d.water],"Water "+d.water);
+ if(d.floor==0)add(12,"Ground floor");else if(d.floor==1)add(6,"First floor");return{p,w}}
+function view(r){const age=(now()-r.created)/1000,b=r.status=="new"?Math.min(age/5,20):0,{p,w}=score(r),pr=p+b;
+ return{...r,pr:Math.round(pr),lv:pr>=75?"CRITICAL":pr>=45?"HIGH":pr>=20?"MEDIUM":"LOW",wait:Math.round(age),why:w.join(", ")}}
+// merge: newer fields win, status only moves forward
+function merge(n,rec,up){const cur=n.db.get(rec.id),srv=()=>n.cmd?++S.clock:0;
+ if(!cur){n.db.set(rec.id,{...rec,synced:up,srv:srv(),recv:n.cmd?now():rec.recv});return true}
+ const b=rec.updated>cur.updated?rec:cur,m={...b};m.status=RANK[rec.status]>=RANK[cur.status]?rec.status:cur.status;
+ const w=[rec,cur].filter(r=>r.status==m.status&&r.assignee);m.assignee=w.length?w[0].assignee:b.assignee;
+ m.created=Math.min(rec.created,cur.created);m.updated=Math.max(rec.updated,cur.updated);m.recv=cur.recv??rec.recv;m.asg=cur.asg??rec.asg;m.resc=cur.resc??rec.resc;
+ if(FIELDS.every(f=>m[f]===cur[f]))return false;
+ n.db.set(rec.id,{...m,q:cur.q||rec.q,synced:up&&FIELDS.every(f=>m[f]===rec[f]),srv:n.cmd?srv():cur.srv});return true}
+const link=b=>dist(b,HQ)<R,V=()=>S.vics.find(v=>v.id==sel);
+function conn(v){let best=null,d=W;for(const b of Object.values(S.boats)){const x=dist(b,v);if(x<d){d=x;best=b}}return best}
+function packet(a,b,c){pk.push({a:{x:a.x,y:a.y},b:{x:b.x,y:b.y},t:0,c})}
+// phone -> boat
+function readForm(){const g=i=>$("#"+i);return{people:Math.max(1,Math.min(20,+g("people").value||1)),floor:+g("floor").value,medical:+g("medical").checked,injured:+g("injured").checked,infants:+g("infants").checked,elderly:+g("elderly").checked,water:g("water").value,landmark:g("landmark").value.trim()}}
+function loadForm(){const v=V(),f=v.f;$("#people").value=f.people;$("#floor").value=f.floor;for(const k of["medical","injured","infants","elderly"])$("#"+k).checked=!!f[k];$("#water").value=f.water;$("#landmark").value=f.landmark;$("#who").textContent="Phone at: "+f.landmark}
+function deliver(v,b,rec){const ex=b.db.get(v.rid),t=rec.updated;
+ const r={...rec,id:v.rid,vid:v.id,node:ex?ex.node:b.id,created:ex?ex.created:rec.created,status:ex?ex.status:"new",assignee:ex?ex.assignee:undefined,updated:t,synced:false,srv:0,q:ex?ex.q:!link(b)};
+ b.db.set(v.rid,r);packet(v,b,"var(--accent)");S.flags.sent=true;if(!link(b))S.flags.queued=true;
+ log("<b>"+b.id+"</b> saved SOS from "+v.id+(link(b)?"":" — no link to command, queued"))}
+function send(v,f){const t=now(),rec={...f,created:t,updated:t};v.f=f;v.sent=true;if(v.sentAt==null)v.sentAt=t;const b=conn(v);
+ if(b){v.outbox=null;deliver(v,b,rec)}else{v.outbox=rec;log("Phone "+v.id+" saved the SOS locally — no EMERGENCY_SOS Wi‑Fi in range")}}
+function sync(b){if(!link(b))return;let up=0,down=0;b.kx=b.x;b.ky=b.y;
+ for(const r of[...b.db.values()].filter(r=>!r.synced).sort((a,c)=>view(c).pr-view(a).pr).slice(0,CAP)){if(r.q&&r.status=="new")S.flags.flushed=true;merge(S.cmd,{...r},false);r.synced=true;up++}
+ for(const r of S.cmd.db.values())if(r.srv>b.cursor&&merge(b,{...r},true))down++;b.cursor=S.clock;
+ if(up){packet(b,HQ,"var(--ok)");S.flags.cmd=true;log("<b>"+b.id+"</b> pushed "+up+" case(s) to the command centre")}
+ if(down)packet(HQ,b,"var(--blue)")}
+function cmdSet(id,status,assignee){const r=S.cmd.db.get(id);if(!r||RANK[status]<=RANK[r.status])return;
+ S.cmd.db.set(id,{...r,status,assignee,updated:now(),asg:status=="assigned"?now():r.asg,synced:true,srv:++S.clock});
+ if(status=="assigned"){S.flags.assigned=true;log("Command assigned <b>"+r.vid+"</b> to <b>"+assignee+"</b>")}else log("Command closed "+r.vid+" as false alarm")}
+// traffic control at the command centre: one boat per case, free boats only, nearest by last known position
+function dispatch(){const m=$("#mode").value;if(m=="manual")return;const cs=[...S.cmd.db.values()].filter(r=>r.status=="new").map(view);
+ if(m=="nearest")cs.sort((a,c)=>a.created-c.created);else cs.sort((a,c)=>c.pr-a.pr);
+ const busy=new Set([...S.cmd.db.values()].filter(r=>r.status=="assigned").map(r=>r.assignee));
+ for(const c of cs){const v=S.vics.find(x=>x.id==c.vid);let best=null,bd=1e9;for(const b of Object.values(S.boats)){if(busy.has(b.id))continue;const d=Math.hypot(b.kx-v.x,b.ky-v.y);if(d<bd){bd=d;best=b}}
+  if(!best)break;busy.add(best.id);cmdSet(c.id,"assigned",best.id)}}
+function scenario(){const a=S.auto;if(!a)return;const bs=Object.values(S.boats);
+ if(a.st==0){bs.forEach((b,i)=>{b.mode="go";b.tx=PATROL[i].x;b.ty=PATROL[i].y});a.st=1;log("Scenario: all five boats patrol the flooded area")}
+ else if(a.st==1&&bs.every(b=>b.tx==null)){S.vics.forEach(v=>send(v,v.f));a.st=2;a.t=S.t;log("Scenario: all eight households send an SOS at once")}
+ else if(a.st==2&&S.t-a.t>3){bs.forEach(b=>{b.mode="return";b.tx=DOCK[b.id].x;b.ty=DOCK[b.id].y});a.st=3;log("Scenario: boats return to base to sync")}}
+function tick(dt){speed=+$("#spd").value;S.t+=dt*speed;S.dacc+=dt*speed;if(S.dacc>1){S.dacc=0;dispatch()}scenario();
+ for(const b of Object.values(S.boats)){
+  if(b.mode=="idle"||b.mode=="return"){const r=[...b.db.values()].filter(r=>r.status=="assigned"&&r.assignee==b.id&&!b.done.has(r.id)).sort((a,c)=>view(c).pr-view(a).pr)[0];if(r){const v=S.vics.find(x=>x.id==r.vid);b.done.add(r.id);b.mission=r;b.mode="mission";b.tx=v.x-26;b.ty=v.y+8;log("<b>"+b.id+"</b> received the order and sails to "+r.vid)}}
+  if(b.tx!=null){const d=Math.hypot(b.tx-b.x,b.ty-b.y),s=70*speed*dt;
+   if(d<=s){b.x=b.tx;b.y=b.ty;b.tx=null;
+    if(b.mode=="mission"){const r=b.db.get(b.mission.id),v=S.vics.find(x=>x.id==r.vid);b.db.set(r.id,{...r,status:"rescued",updated:now(),resc:now(),synced:false,q:!link(b)});v.rescued=true;v.rescAt=now();S.flags.rescued=true;log("<b>"+b.id+"</b> rescued "+r.vid+" and heads back to base");b.mode="return";b.tx=DOCK[b.id].x;b.ty=DOCK[b.id].y}
+    else b.mode="idle"}
+   else{b.x+=(b.tx-b.x)/d*s;b.y+=(b.ty-b.y)/d*s}}
+  b.acc+=dt*1000*speed;if(b.acc>1500){b.acc=0;sync(b)}}
+ for(const v of S.vics){const b=conn(v);if(b&&v.outbox){const o=v.outbox;v.outbox=null;deliver(v,b,o)}if(b){const r=b.db.get(v.rid);if(r)v.last=r}if(v.last&&v.last.status=="false_alarm")v.closed=true}
+ for(const p of pk)p.t+=dt/.7;pk=pk.filter(p=>p.t<1)}
+function chips(r){return(r.synced?'<span class="chip s">synced</span>':'<span class="chip q">queued</span>')}
+function set(el,h){if(el._h!==h){el.innerHTML=h;el._h=h}}
+function panels(){
+ for(const id of IDS){const b=S.boats[id],up=link(b),rows=[...b.db.values()].map(view).sort((a,c)=>c.pr-a.pr),q=rows.filter(r=>!r.synced).length;
+  set($("#s_"+id),'Link to command: <b>'+(up?"up":"out of range")+"</b> · "+q+" waiting to sync");
+  set($("#l_"+id),rows.length?rows.map(r=>'<li class="'+r.lv+(r.status=="rescued"||r.status=="false_alarm"?" done":"")+'"><b>'+r.lv+" "+r.pr+"</b> "+esc(r.vid)+" · "+r.people+" people · "+esc(r.landmark)+"<br>"+r.status.replace("_"," ")+(r.assignee?" → "+r.assignee:"")+" "+chips(r)+"</li>").join(""):'<li class="empty">No cases stored on this boat.</li>');
+  const bt=$("#t_"+id);bt.textContent=up?"Go out of range":"Return to base";bt.dataset.b=id}
+ const rows=[...S.cmd.db.values()].map(view),act=rows.filter(r=>r.status=="new"||r.status=="assigned").sort((a,c)=>c.pr-a.pr),cl=rows.filter(r=>!act.includes(r));
+ {const A=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):"–",rc=S.vics.filter(v=>v.rescAt!=null),tot=rc.map(v=>(v.rescAt-v.sentAt)/1000);set($("#met"),"Rescued <b>"+rc.length+"/"+S.vics.filter(v=>v.sent).length+"</b> · average minutes: SOS to command <b>"+A(rows.filter(r=>r.recv!=null).map(r=>(r.recv-r.created)/1000))+"</b>, command to assignment <b>"+A(rows.filter(r=>r.asg!=null).map(r=>(r.asg-r.recv)/1000))+"</b>, SOS to rescue <b>"+A(tot)+"</b> (slowest "+(tot.length?Math.round(Math.max(...tot)):"–")+")")}
+ set($("#s_CMD"),"Cases received: <b>"+rows.length+"</b> · active: <b>"+act.length+"</b>");
+ set($("#l_CMD"),rows.length?act.concat(cl).map(r=>{const on=r.status=="new";return'<li class="'+r.lv+(on||r.status=="assigned"?"":" done")+'"><b>'+r.lv+" "+r.pr+"</b> "+esc(r.vid)+" · "+r.people+" people · "+esc(r.landmark)+" · waited "+r.wait+" min<br>"+esc(r.why)+"<br>"+r.status.replace("_"," ")+(r.assignee?" → "+r.assignee:"")+" · via "+esc(r.node)+(on?'<div class="acts"><button data-a="assign" data-id="'+r.id+'" data-b="BOAT1">Assign BOAT1</button><button data-a="assign" data-id="'+r.id+'" data-b="BOAT2">Assign BOAT2</button><button data-a="fake" data-id="'+r.id+'">False alarm</button></div>':"")+"</li>"}).join(""):'<li class="empty">Nothing has reached the command centre yet.</li>')}
+function phoneUI(){const v=V(),b=conn(v),n=$("#net");n.className="net"+(b?" on":"");n.textContent=b?"Wi‑Fi: EMERGENCY_SOS ("+b.id+")":"No EMERGENCY_SOS Wi‑Fi in range";
+ $("#send").textContent=v.sent?"Update details":"I NEED HELP";let c="",h="";
+ if(v.sent){const r=v.last;
+  if(v.outbox){c="warn";h="Saved on this phone, not delivered yet. It sends automatically when EMERGENCY_SOS appears."}
+  else if(!r){c="warn";h="Sending…"}
+  else if(r.status=="false_alarm"){c="off";h="This request was closed as a false alarm."}
+  else if(r.status=="rescued"){c="good";h="A rescue boat has reached you. You are safe."}
+  else if(r.status=="assigned"){c="good";h="Help is coming: "+r.assignee+" is on its way."}
+  else if(r.synced){h="Your request reached the command centre. Stay where you are."}
+  else{c="warn";h="Received by "+r.node+". It will reach the command centre when the boat reconnects."}
+  if(!b&&!v.outbox)h+=" (last update)"}
+ set($("#banner"),h?'<div class="banner '+c+'">'+esc(h)+"</div>":"")}
+function draw(){const sv=[];
+ sv.push('<rect width="760" height="440" fill="var(--sea)"/><path d="M0 0H125Q155 110 130 220Q155 330 125 440H0Z" fill="var(--land)"/>');
+ sv.push('<rect x="370" y="30" width="380" height="385" rx="40" fill="var(--flood)" opacity=".35"/><text x="388" y="52">Flooded area</text>');
+ sv.push('<circle cx="'+HQ.x+'" cy="'+HQ.y+'" r="'+R+'" fill="none" stroke="var(--ok)" stroke-width="2" stroke-dasharray="7 6"/><text x="'+(HQ.x+R-150)+'" y="'+(HQ.y-R+60)+'" style="fill:var(--ok);font-weight:700">Command link range</text>');
+ sv.push('<rect x="30" y="198" width="70" height="44" rx="4" fill="var(--ink)"/><text x="22" y="262" style="font-weight:700">Command centre</text><text x="22" y="278">(server)</text>');
+ for(const b of Object.values(S.boats)){if(link(b))sv.push('<line x1="'+b.x+'" y1="'+b.y+'" x2="'+HQ.x+'" y2="'+HQ.y+'" stroke="var(--ok)" stroke-width="3"/>')}
+ for(const v of S.vics){const on=v.sent&&!v.rescued&&!v.closed,col=v.rescued?"var(--ok)":on?"var(--accent)":"var(--mut)";
+  sv.push('<g data-v="'+v.id+'" style="cursor:pointer"><circle cx="'+v.x+'" cy="'+v.y+'" r="26" fill="'+(v.id==sel?"var(--panel)":"transparent")+'" stroke="'+(v.id==sel?"var(--blue)":"none")+'" stroke-width="3"/><path d="M'+(v.x-14)+' '+(v.y+10)+'V'+(v.y-3)+'L'+v.x+' '+(v.y-15)+'L'+(v.x+14)+' '+(v.y-3)+'V'+(v.y+10)+'Z" fill="'+col+'"/>'+(on?'<circle cx="'+v.x+'" cy="'+v.y+'" r="'+(20+(performance.now()/60%14))+'" fill="none" stroke="var(--accent)" stroke-width="2" opacity=".5"/>':"")+'<text x="'+(v.x-8)+'" y="'+(v.y+36)+'" style="font-weight:700">'+v.id+"</text></g>")}
+ for(const b of Object.values(S.boats)){if(b.mode=="mission")sv.push('<line x1="'+b.x+'" y1="'+b.y+'" x2="'+b.tx+'" y2="'+b.ty+'" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3 5"/>');sv.push('<circle cx="'+b.x+'" cy="'+b.y+'" r="'+W+'" fill="var(--accent)" fill-opacity=".05" stroke="var(--accent)" stroke-dasharray="4 5"/>');
+  sv.push('<g data-b="'+b.id+'" style="cursor:grab" transform="translate('+b.x+" "+b.y+')"><path d="M-24 0H24L15 13H-15Z" fill="var(--ink)"/><rect x="-3" y="-16" width="6" height="16" fill="var(--ink)"/><path d="M3 -16L17 -6H3Z" fill="var(--accent)"/><text x="-22" y="30" style="font-weight:700">'+b.id+"</text></g>")}
+ for(const p of pk){const t=Math.min(1,p.t);sv.push('<circle cx="'+(p.a.x+(p.b.x-p.a.x)*t)+'" cy="'+(p.a.y+(p.b.y-p.a.y)*t)+'" r="6" fill="'+p.c+'" stroke="var(--panel)" stroke-width="2"/>')}
+ set($("#map"),sv.join(""))}
+function hint(){const f=S.flags;$("#hint").innerHTML=!f.sent?"<b>Start:</b> drag a boat next to a house so the phone joins EMERGENCY_SOS, then press I NEED HELP on the phone. Or press Run stress scenario to start with all five boats and eight households.":!f.cmd?"The boat saved it first. While the boat is inside the dashed green circle it reaches the command centre within a few seconds.":!f.queued?"<b>Store and forward:</b> press Go out of range on a boat, bring it next to another house, and send a second SOS. It waits in the boat’s queue.":!f.flushed?"Press Return to base on that boat. The queued SOS now reaches the command centre.":!f.assigned?"At the command centre, press Assign BOAT1 or BOAT2 on a case.":!f.rescued?"The boat receives the order on its next sync, sails to the house and rescues. Watch the phone.":"<b>Complete.</b> The status travelled victim → boat → command → boat → victim. Press Reset to run it again."}
+function logUI(){set($("#log"),S.log.map(m=>"<div>"+m+"</div>").join(""))}
+function loop(t){const dt=Math.min(.1,(t-last)/1000);last=t;tick(dt);draw();phoneUI();pacc+=dt;if(pacc>.3){pacc=0;panels();hint();logUI()}requestAnimationFrame(loop)}
+// events
+const svg=$("#map");function pt(e){const r=svg.getBoundingClientRect();return{x:(e.clientX-r.left)*760/r.width,y:(e.clientY-r.top)*440/r.height}}
+svg.addEventListener("pointerdown",e=>{const b=e.target.closest("[data-b]"),v=e.target.closest("[data-v]");if(b){drag=b.dataset.b;const B=S.boats[drag];B.tx=null;B.mode="idle";svg.setPointerCapture(e.pointerId)}else if(v){sel=v.dataset.v;loadForm()}});
+svg.addEventListener("pointermove",e=>{if(!drag)return;const p=pt(e),B=S.boats[drag];B.x=Math.max(140,Math.min(745,p.x));B.y=Math.max(15,Math.min(420,p.y))});
+svg.addEventListener("pointerup",()=>{drag=null});
+document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+ if(t.dataset.a=="assign")cmdSet(t.dataset.id,"assigned",t.dataset.b);else if(t.dataset.a=="fake")cmdSet(t.dataset.id,"false_alarm");
+ else if(t.id=="auto"){fresh();S.auto={st:0}}else if(t.id&&t.id.startsWith("t_")){const b=S.boats[t.dataset.b];if(b.mode=="mission")return;const out=link(b);b.mode=out?"goout":"return";const T=out?FAR[b.id]:DOCK[b.id];b.tx=T.x;b.ty=T.y;log("<b>"+b.id+"</b> "+(out?"sails out of command range":"returns to base"))}});
+$("#send").addEventListener("click",()=>send(V(),readForm()));$("#form").addEventListener("input",()=>{V().f=readForm()});
+$("#reset").addEventListener("click",()=>{fresh();panels();hint()});
+$("#boats").innerHTML=IDS.map(id=>'<section class="card"><div class="hd"><h2>'+id+'</h2><button id="t_'+id+'"></button></div><p class="st" id="s_'+id+'"></p><ul id="l_'+id+'"></ul></section>').join("");
+fresh();requestAnimationFrame(loop);
+</script></body></html>
